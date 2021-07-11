@@ -34,7 +34,7 @@ Básicamente cualquier componente que tenga lógica de estado es candidato a usa
 - Temporizadores
 - Animaciones
 
-Ejemplos de aplicación
+**Ejemplos de aplicación**
 
 Tenemos la lógica de estado de consumo de una API, dentro del componente. 
 
@@ -154,3 +154,151 @@ https://github.com/streamich/react-use
 
 ## Pattern: High ordered components [HOC]
 
+Es una función javascript que recibe por parámetro un componente react y retorna una versión de ese componente enriquecido, inyectandole nueva lógica. Se nombre con la palabra "with" al inicio.  Se utiliza para reutilizar lógica de comportamiento.
+
+**Ventajas**
+
+- Favorece el mantenimiento al tener lógica separada en una función que tenga sólo una razón para cambiar, que es el principio de responsabilidad única.
+- Nos ayuda a eliminar duplicidad
+
+**Desventajas**
+
+- Colición de nombres de props.
+
+**En que casos aplica usar este patrón?**
+
+Cada vez que necesitamos abstraer y reutilizar lógica de comportamiento entre componentes
+
+**Ejemplos de aplicación**
+
+Este es el ejemplo de un formulario, vamos a crear un HOC, que nos permita poder crear formularios independientemente de los campos que tenga adentro, y que pueda reutilizar la lógica de manejo de formulario.
+
+normal-form.js
+
+```jsx
+import React, {useState} from 'react';
+import PropTypes from 'prop-types';
+
+export const NormalForm = ({onSubmit}) => {
+  const [formValues, setFormValues] = useState({
+    name: '',
+    address: '',
+  });
+
+  const handleChange = e => {
+    const {
+      target: {name, value},
+    } = e;
+    setFormValues({...formValues, [name]: value});
+  };
+
+  const handleSubmit = e => {
+    e.preventDefault();
+    onSubmit(JSON.stringify(formValues));
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <p>Name</p>
+        <input
+          type="text"
+          name="name"
+          value={formValues.name}
+          onChange={handleChange}
+        />
+      </div>
+      <div>
+        <p>Address</p>
+        <input
+          type="text"
+          name="address"
+          value={formValues.address}
+          onChange={handleChange}
+        />
+      </div>
+      <div>
+        <button type="submit">Send</button>
+      </div>
+    </form>
+  );
+};
+
+```
+
+Creamos el hoc withControlledForm, que recibe como parámetro un componente y el estado inicial de los campos, y lo devuelve con la lógica inyectada para manejar formularios.
+
+withControlledForm.jsx
+
+```jsx
+const withControlledForm = (Form, initialState = {}) => {
+  const ControlledForm = ({onSubmit}) => {
+    const [formValues, setFormValues] = useState(initialState);
+
+    const handleChange = e => {
+      const {
+        target: {name, value},
+      } = e;
+      setFormValues({...formValues, [name]: value});
+    };
+
+    const handleSubmit = e => {
+      e.preventDefault();
+      onSubmit(formValues);
+    };
+
+    return (
+      <Form
+        formValues={formValues}
+        handleChange={handleChange}
+        handleSubmit={handleSubmit}
+      />
+    );
+  };
+
+  return ControlledForm;
+};
+```
+
+Con esto podemos utilizarlo para componentes que necesiten de lógica de formulario.
+
+Aquí exportamos un componente de formulario enriquecido por el HOC withControlledForm
+
+```jsx
+const MyFormA = ({formValues, handleChange, handleSubmit}) => {
+  return (
+    <form onSubmit={handleSubmit}>
+      <div>
+        <p>Name</p>
+        <input
+          type="text"
+          name="name"
+          value={formValues.name}
+          onChange={handleChange}
+        />
+      </div>
+      <div>
+        <p>Job Title</p>
+        <input
+          type="text"
+          name="jobTitle"
+          value={formValues.jobTitle}
+          onChange={handleChange}
+        />
+      </div>
+      <button type="submit">Submit</button>
+    </form>
+  );
+};
+
+export const MyFormAControlled = withControlledForm(MyFormA, {
+  name: 'john doe',
+  jobTitle: 'full stack developer',
+});
+```
+
+**Links de interés**
+
+https://github.com/juan-carlos-correa/with-controlled-form
+
+https://reactrouter.com/web/api/withRouter
