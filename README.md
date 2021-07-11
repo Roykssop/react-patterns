@@ -302,3 +302,86 @@ export const MyFormAControlled = withControlledForm(MyFormA, {
 https://github.com/juan-carlos-correa/with-controlled-form
 
 https://reactrouter.com/web/api/withRouter
+
+## Pattern: Extendible Styles
+
+Este patrón le da la capacidad a los componentes de poder extender sus estilos.
+
+**Ventajas**
+
+- Componentes abiertos a extensión y cerrados a su modificación (Solid)
+
+**Desventajas**
+
+- 
+
+**En que casos aplica usar este patrón?**
+
+Para evitar tener lógica de estilos dentro del componente, o evitar crear componentes similares innecesariamente con pequeñas diferencias de estilos.
+
+**Ejemplos de aplicación**
+
+normal-button.js
+
+```jsx
+import PropTypes from 'prop-types';
+
+import './button.css';
+
+export const Button = ({name, type, onClick, children}) => {
+  return (
+    <button
+      name={name}
+      type={type}
+      onClick={onClick}
+      className="btn btn-primary"
+    >
+      {children}
+    </button>
+  );
+};
+```
+
+custom-button.js
+
+Como vemos este componente está abierto a cambios de estilos, recibe como prop el className y también styles.
+
+```jsx
+import PropTypes from 'prop-types';
+
+import './button.css';
+
+export const CustomButton = ({
+  name,
+  type,
+  onClick,
+  children,
+  className = 'btn btn-primary',
+  style = {},
+}) => {
+  return (
+    <button
+      name={name}
+      type={type}
+      onClick={onClick}
+      className={className}
+      style={style}
+    >
+      {children}
+    </button>
+  );
+};
+```
+
+**Links de interés**
+
+https://material-ui.com/api/button/
+
+https://github.com/couds/react-bulma-components/blob/master/src/components/button/button.js 
+
+https://github.com/react-bootstrap/react-bootstrap/blob/master/src/Button.tsx
+
+
+
+
+
