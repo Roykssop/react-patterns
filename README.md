@@ -4,7 +4,7 @@
 
 
 
-### Custom Hook
+## Pattern: Custom Hook
 
 Es simplemente es una función de JavaScript, cuyo nombre comienza con la palabra  "use", Un custom hook puede tranquilamente llamar a otros hooks.
 
@@ -143,4 +143,14 @@ import {useFetch} from './useFetch.js'
 
 const {data, isFetching, error} = useFetch(url);
 ```
+
+**Links de interés**
+
+https://github.com/rehooks/awesome-react-hooks
+
+https://github.com/streamich/react-use
+
+
+
+## Pattern: High ordered components [HOC]
 
