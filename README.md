@@ -383,5 +383,226 @@ https://github.com/react-bootstrap/react-bootstrap/blob/master/src/Button.tsx
 
 
 
+## Pattern: Compound 
 
+Este patrón aprovecha al máximo la composición de componentes para que podamos implementar una UI de una manera muy flexible, siempre y cuando esos componentes compartan un estado en común, internamente suele usar context para comunicar los componentes.
 
+**Ventajas**
+
+- Nos permite aplicar estructuras de UI flexibles
+
+**Desventajas**
+
+- Al usar React Context hace que su los componentes sean más limitados a usar por fuera de esa estructura.
+
+**Ejemplos de uso**
+
+Por ejemplo tenemos un blog, y tenemos componentes como título, sidebar, post, este patrón nos permite que en diferentes páginas estos componentes puedan aparecer en distinto orden, o sea nos da flexibildad, sin necesidad de incluir condicionales de renderizado dentro.
+
+**En que casos aplica usar este patrón?**
+
+Se utiliza solo cuando identifico que necesito una estructura de UI flexible y no antes, cómo si fuera un refactor.
+
+**Ejemplos de aplicación**
+
+Tenemos un componente Todo, que está conformado por los componentes
+
+1. TodoTitle
+2. TodoForm
+3. TodoList
+
+El primer problema es que al querer pasar props, deberían pasar todas por el componente TODO, recibirlos y pasarlos a los componentes hijos, si fueran muchos componentes hijos y estos tuvieran a su vez mas hijos se tornaría complejo.
+
+El segundo problema es la legibilidad.
+
+Tercero si yo quisiera cambiar el orden de aparición de los componentes, tendría que modificarlo, o crear otro componente TODO, y no estaría teniendo componentes reutilizables, o terminaría agregando condicionales, pero agregaríamos complejidad accidental.
+
+Ejemplo  sin el patrón
+
+```jsx
+import {useState} from 'react';
+import PropTypes from 'prop-types';
+
+export const Todo = ({title}) => {
+  const [listTodos, setListTodos] = useState({});
+
+  const handleSubmit = inputValue => {
+    setListTodos({
+      ...listTodos,
+      [inputValue]: {name: inputValue, isDone: false},
+    });
+  };
+
+  const toogleTodo = ({target: {name}}) => {
+    setListTodos({
+      ...listTodos,
+      [name]: {
+        ...listTodos[name],
+        isDone: !listTodos[name].isDone,
+      },
+    });
+  };
+
+  const getTodoValues = () => Object.values(listTodos);
+
+  const todoListValues = getTodoValues();
+
+  return (
+    <div
+      style={{
+        boxShadow: '0 4px 8px 0 rgba(0, 0, 0, 0.2)',
+        transition: '0.3s',
+        borderRadius: '5px',
+        padding: '8px',
+      }}
+    >
+      <TodoTitle>
+        <h2>{title}</h2>
+      </TodoTitle>
+      <main>
+        <TodoForm onSubmit={handleSubmit} />
+      </main>
+      <footer>
+        {!todoListValues.length && <p>No todo added yet.</p>}
+        <TodoList list={todoListValues} onChange={toogleTodo} />
+      </footer>
+    </div>
+  );
+};
+```
+
+Ejemplo con el Patrón:
+
+Así quedaría el TODO, pasaríamos directamente los componentes dentro, lo que nos da flexibilidad, para acomodarlos a gusto.
+
+```jsx
+    <FinalTodo>
+      <TodoTitle>
+        <h1>Compound Pattern :D</h1>
+      </TodoTitle>
+      <TodoForm />
+      <TodoList />
+    </FinalTodo>
+```
+
+FinalTodo.jsx
+
+Creamos un context que servirá para poder comunicar todos los componentes hijos sin necesidad de hacer drill down de props.
+
+```jsx
+import {useState, createContext, useContext} from 'react';
+import PropTypes from 'prop-types';
+
+const TodoContext = createContext();
+
+const {Provider} = TodoContext;
+
+export const FinalTodo = ({children}) => {
+  const [listTodos, setListTodos] = useState({});
+
+  const handleSubmit = inputValue => {
+    setListTodos({
+      ...listTodos,
+      [inputValue]: {name: inputValue, isDone: false},
+    });
+  };
+
+  const toogleTodo = ({target: {name}}) => {
+    setListTodos({
+      ...listTodos,
+      [name]: {
+        ...listTodos[name],
+        isDone: !listTodos[name].isDone,
+      },
+    });
+  };
+
+  const getTodoValues = () => Object.values(listTodos);
+
+  const valuesProvider = {
+    handleSubmit,
+    toogleTodo,
+    getTodoValues,
+  };
+
+  return (
+    <div
+      style={{
+        boxShadow: '0 4px 8px 0 rgba(0, 0, 0, 0.2)',
+        transition: '0.3s',
+        borderRadius: '5px',
+        padding: '8px',
+      }}
+    >
+      <Provider value={valuesProvider}>{children}</Provider>
+    </div>
+  );
+};
+```
+
+Ajustamos componentes hijos al uso de context con useContext
+
+```jsx
+export const TodoTitle = ({children}) => <header>{children}</header>;
+
+export const TodoForm = () => {
+  const [inputValue, setInputValue] = useState('');
+
+  const {handleSubmit} = useContext(TodoContext);
+
+  const handleInputChange = ({target: {value}}) => {
+    setInputValue(value);
+  };
+
+  const _handleSubmit = e => {
+    e.preventDefault();
+    handleSubmit(inputValue);
+    setInputValue('');
+  };
+
+  return (
+    <form onSubmit={_handleSubmit}>
+      <label>
+        New todo:
+        <input
+          type="text"
+          value={inputValue}
+          onChange={handleInputChange}
+          required
+        />
+      </label>
+      <button type="submit">Add</button>
+    </form>
+  );
+};
+
+export const TodoList = () => {
+  const {toogleTodo, getTodoValues} = useContext(TodoContext);
+
+  const list = getTodoValues();
+
+  return (
+    <ul>
+      {list.map(({name, isDone}) => (
+        <li key={name}>
+          <label>
+            <input
+              name={name}
+              type="checkbox"
+              checked={isDone}
+              onChange={toogleTodo}
+            />
+            <span style={{textDecoration: isDone ? 'line-through' : ''}}>
+              {name}
+            </span>
+          </label>
+        </li>
+      ))}
+    </ul>
+  );
+};
+```
+
+**Links de interes:**
+
+https://material-ui.com/es/components/cards/ (Componente que usa compound patter)
