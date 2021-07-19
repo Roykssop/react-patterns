@@ -606,3 +606,128 @@ export const TodoList = () => {
 **Links de interes:**
 
 https://material-ui.com/es/components/cards/ (Componente que usa compound patter)
+
+## Pattern: Render Props
+
+Lo que hacemos con este patrón es utilizar un prop para delegar la responsabilidad de hacer un render con un componente. Esto nos deja el componente abierto y flexible a la lógica de cómo vamos a hacer render al componente o a quien vaya a utilizar esto. El componente padre decide que renderizar.
+
+**Ventajas**
+
+- El componente padre decide que lógica renderizar, por lo que hace reutilizable el componente hijo
+
+**Desventajas**
+
+- Cuando hay un encadenamiento de componentes que utilizan render props, podría llegarse a complejizar mucho la lógica de render
+
+**Ejemplos de aplicación**
+
+Tenemos un componente que renderiza mensajes de error, queremos convertirlo en un componente reutilizable para que renderice distinto contenido de error según la sección.
+
+**Ejemplos sin patrón**
+
+En este ejemplo el componente solo se limita a mostrar el mensaje de error de react, sin ninguna personalización
+
+```jsx
+import {Component} from 'react';
+
+export class ErrorBoundary extends Component {
+  state = {hasError: false, error: null};
+
+  componentDidCatch(error) {
+    this.setState({hasError: true, error});
+  }
+
+  render() {
+    const {hasError, error} = this.state;
+    const {children} = this.props;
+
+    if (hasError) {
+      return (
+        <div>
+          <p>Oops! ha ocurrido un error inesperado</p>
+          {error.toString()}
+        </div>
+      );
+    }
+
+    return children;
+  }
+}
+```
+
+**Ejemplos con patrón**
+
+En este caso si llega una prop render, renderizará el contenido pasado en la función render, y esta recibira el error, para luego formatearlo como se deseé.
+
+```jsx
+import {Component} from 'react';
+
+export class FinalErrorBoundary extends Component {
+  state = {hasError: false, error: null};
+
+  componentDidCatch(error) {
+    this.setState({hasError: true, error});
+  }
+
+  render() {
+    const {hasError, error} = this.state;
+    const {children} = this.props;
+
+    if (hasError && !this.props.render) {
+      return (
+        <div>
+          <p>Oops! ha ocurrido un error inesperado</p>
+          {error.toString()}
+        </div>
+      );
+    }
+
+    if (hasError && this.props.render) {
+      return this.props.render(error);
+    }
+
+    return children;
+  }
+}
+```
+
+Implementación desde el componente padre
+
+Como vemos en la prop render del componente FinalErrorBoundary, devolvemos una función con el contenido a renderizar.
+
+```jsx
+import React, {useState} from 'react';
+import {ErrorBoundary} from './error-boundary';
+import {FinalErrorBoundary} from './final-error-boundary';
+
+const MyBug = () => {
+  const [isError, setIsError] = useState(false);
+
+  const handleCrash = () => {
+    setIsError(true);
+  };
+
+  if (isError) {
+    throw new Error('nani?');
+  }
+
+  return <button onClick={handleCrash}>Crashear la app</button>;
+};
+
+export const RenderPropsPage = () => (
+  <>
+    <FinalErrorBoundary render={error => <p>{`Ups D: ${error.message}`}</p>}>
+      <MyBug />
+    </FinalErrorBoundary>
+  </>
+);
+```
+
+**Links de interes:**
+
+https://medium.com/componentdidblog/use-a-render-prop-50de598f11ce (Articulo sobre beneficios del patrón)
+
+https://es.reactjs.org/docs/render-props.html (Doc react)
+
+https://www.npmjs.com/search?q=render%20props  (Proyectos con render props)
+
