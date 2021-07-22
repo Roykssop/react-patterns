@@ -731,3 +731,104 @@ https://es.reactjs.org/docs/render-props.html (Doc react)
 
 https://www.npmjs.com/search?q=render%20props  (Proyectos con render props)
 
+
+
+## Pattern: Control Props
+
+Este patrón nos permite que cualquier tipo de componente que maneja un estado interno, pueda delegar el control o la manipulación de su estado por medio, o más bien a su componente padre o a quien sea que lo esté utilizando.
+
+**Ventajas**
+
+- Nos permite delegar el uso del estado, cntrol o la lógica de actualización del estado, Esto nos permite tener o darle flexibilidad al componente sin estar agregando complejidad innecesaria dentro de su implementación. Con esto aplicamos Open Closed principle dejando abierta la puerta a que podamos modificar su comportamiento.
+
+**Desventajas**
+
+- La desventaja es que el componente padre va a tener que controlar esas variables de estado y lógica.
+
+**Ejemplo de aplicación**
+
+Es aplicará en casos en los que tengamos un fuente cuyo cuyo estado interna creamos que está abierto a casos de uso o escenarios diferentes a los que fue este componente diseñado originalmente.
+
+**Ejemplos sin patrón**
+
+En este ejemplo tenemos un componente que nos muestra un boton de like y aplica un contador, manejando su lógica de estado interna y solo cumple con un escenario, al ser clickeado sumar 1 al contador.
+
+```jsx
+import {useState} from 'react';
+
+export const LikeButton = ({cb}) => {
+  const [likes, setLikes] = useState(0);
+
+  const handleClick = () => setLikes(cb(likes));
+
+  return (
+    <button onClick={handleClick}>
+      <span role="img" aria-label="like">
+        👍
+      </span>
+      {likes}
+    </button>
+  );
+};
+```
+
+**Ejemplos con patrón**
+
+Con este ejemplo, el componente final, queda abierto a poder ser controlada su actualización desde afuera, e incluso no solo dejarlo fijo a manejar el evento click.
+
+```jsx
+import {useState} from 'react';
+
+export const FinalLikeButton = ({value, setValue}) => {
+  const isControlled = value !== undefined && setValue !== undefined;
+
+  const [likes, setLikes] = useState(0);
+
+  const handleClick = () => (isControlled ? setValue() : setLikes(likes + 1));
+
+  return (
+    <button onClick={handleClick}>
+      <span role="img" aria-label="like">
+        👍
+      </span>
+      {isControlled ? value : likes}
+    </button>
+  );
+};
+```
+
+Componente padre que controla la lógica, implementando el manejo de estados.
+
+```jsx
+import React, {useState} from 'react';
+
+import {LikeButton} from './like-button';
+import {FinalLikeButton} from './final-like-button';
+
+export const ControlPropsPage = () => {
+  const [counter, setCounter] = useState(0);
+
+  const handleUpdateCounter = () => {
+    setCounter(counter + 5);
+  };
+
+  const handleChange = ({target: {value}}) => {
+    if (value === 'like') {
+      setCounter(counter + 1);
+    }
+  };
+
+  return (
+    <>
+      <h2>Ejemplo sin Control Props</h2>
+      <LikeButton cb={likes => likes + 100} />
+      <hr />
+
+      <h2>Ejemplo con Control Props</h2>
+      <input type="text" onChange={handleChange} />
+      <FinalLikeButton value={counter} setValue={handleUpdateCounter} />
+    </>
+  );
+};
+```
+
