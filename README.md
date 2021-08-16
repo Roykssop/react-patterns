@@ -1315,3 +1315,206 @@ export const MyForm = () => {
 }
 ```
 
+
+
+## Pattern: State Reducer
+
+Este patrón consiste en delegar el máximo contro de como se va actualizar el estado interno de un componente o un custom hook.
+
+**Ventajas**
+
+- Tenemos el máximo control del estado de un componente
+
+**Desventajas**
+
+- Implementación compleja
+
+**Ejemplos de aplicación**
+
+Básicamente hay que aplicarlo a componentes o custom hooks que funcionan de una manera muy compleja, y que necesitamos que tengan flexibilidad.
+
+**Ejemplos sin patrón**
+
+Usamos un custom hook que manipularía los estados de un player
+
+```jsx
+export const usePlayer = () => {
+  const [isPlaying, setPlaying] = useState(false);
+
+  const tooglePlay = () => setPlaying(!isPlaying);
+  const play = () => setPlaying(true);
+  const pause = () => setPlaying(false);
+
+  return {
+    tooglePlay,
+    isPlaying,
+    play,
+    pause,
+  };
+};
+```
+
+Componente que lo utiliza
+
+```jsx
+export const Player = () => {
+  const [count, setCount] = useState(0);
+  const {tooglePlay, play, pause, isPlaying} = usePlayer();
+
+  const handlePlay = () => {
+    setCount(count + 1);
+    play();
+  };
+
+  const clickedMoreTimes = () => count >= LIMIT_TIMES;
+
+  return (
+    <div className="App">
+      <h1>Ejemplo de State Reducer Pattern</h1>
+      <p>you clicked {count} times!</p>
+      <p>
+        Current status: <b>{isPlaying ? 'playing' : 'paused'}</b>
+      </p>
+      <button disabled={clickedMoreTimes()} onClick={handlePlay}>
+        Start
+      </button>
+      <button onClick={pause}>Pause</button>
+      <button onClick={tooglePlay}>Toogle</button>
+    </div>
+  );
+};
+```
+
+Un problema podría ser si cambia el requerimiento y nos dicen por ejemplo que la funcionalidad sería limitar los plays a 5, podríamos adaptar la lógica en el custom hook pero le estaríamos dando probablemente mas responsabilidades de las que debería tener el hook.
+
+La justificación para usar el patrón es que el manejo del limite de plays sea lo mas personalizable posible.
+
+**Ejemplos con patrón**
+
+Modificamos el hook, utilizando el react hook useReducer, que sirve para manejar estados complejos.
+
+playerReducer va a ser nuestra función reductora, recibe el estado y la acción a realizar, 
+
+```jsx
+export const playerReducer = (state, action) => {
+  if (action.type === actionTypes.TOOGLE_PLAYING) {
+    return {isPlaying: !state.isPlaying};
+  }
+
+  if (action.type === actionTypes.PLAY) {
+    return {isPlaying: true};
+  }
+
+  if (action.type === actionTypes.PAUSE) {
+    return {isPlaying: false};
+  }
+
+  return state;
+};
+```
+
+A useReducer le pasaremos la función reductora y el estado inicial, y vamos a recibir el estado retornado en isPlaying, y la función dispatch, que será la encargada de mutar el estado, 
+
+Cada vez que se llame a dispatch, nuestro reducer va a ser llamado.
+
+```jsx
+const [{isPlaying}, dispatch] = useReducer(reducer, {isPlaying: false});
+```
+
+Quedando así finalmente nuestro usePlayerReducer custom hook.
+
+```jsx
+export const playerReducer = (state, action) => {
+  if (action.type === actionTypes.TOOGLE_PLAYING) {
+    return {isPlaying: !state.isPlaying};
+  }
+
+  if (action.type === actionTypes.PLAY) {
+    return {isPlaying: true};
+  }
+
+  if (action.type === actionTypes.PAUSE) {
+    return {isPlaying: false};
+  }
+
+  return state;
+};
+
+export const usePlayerReducer = ({reducer = playerReducer} = {}) => {
+  const [{isPlaying}, dispatch] = useReducer(reducer, {isPlaying: false});
+
+  const tooglePlay = () => dispatch({type: actionTypes.TOOGLE_PLAYING});
+  const play = () => dispatch({type: actionTypes.PLAY});
+  const pause = () => dispatch({type: actionTypes.PAUSE});
+
+  return {
+    tooglePlay,
+    isPlaying,
+    play,
+    pause,
+  };
+};
+
+export {actionTypes};
+```
+
+En el componente lo que vamos a hacer es enviar una propia función reductora a useReducer, en la cual esté extendiendo la función reductora por defecto del custom Hook, de esta forma no se ve modificada en su lógica y es extensible.
+
+```jsx
+import {useState} from 'react';
+
+import {
+  usePlayerReducer,
+  actionTypes,
+  playerReducer,
+} from '../hooks/use-player-reducer';
+
+const LIMIT_TIMES = 5;
+
+export const PlayerReducer = () => {
+  const [count, setCount] = useState(0);
+  const clickedMoreTimes = () => count >= LIMIT_TIMES;
+
+  const {tooglePlay, play, pause, isPlaying} = usePlayerReducer({
+    reducer(state, action) {
+      const stateUpdated = playerReducer(state, action);
+
+      if (action.type === actionTypes.PLAY && clickedMoreTimes()) {
+        alert('limit reached');
+        return {
+          isPlaying: false,
+        };
+      }
+
+      return stateUpdated;
+    },
+  });
+
+  const handlePlay = () => {
+    setCount(count + 1);
+    play();
+  };
+
+  return (
+    <div className="App">
+      <h1>Ejemplo de State Reducer Pattern</h1>
+      <p>you clicked {count} times!</p>
+      <p>
+        Current status: <b>{isPlaying ? 'playing' : 'paused'}</b>
+      </p>
+      <button disabled={clickedMoreTimes()} onClick={handlePlay}>
+        Start
+      </button>
+      <button onClick={pause}>Pause</button>
+      <button onClick={tooglePlay}>Toogle</button>
+    </div>
+  );
+};
+```
+
+**Links de interés**
+
+https://github.com/downshift-js/downshift (implementa el patrón State Reducer)
+
+
+
