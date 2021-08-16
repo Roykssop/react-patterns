@@ -832,3 +832,412 @@ export const ControlPropsPage = () => {
 };
 ```
 
+**Links de interes:**
+
+https://github.com/downshift-js/downshift#control-props
+
+## Pattern: Props Getters
+
+Este patrón consiste en pasar una función como prop desde un componente padre a un componente hijo, de esta forma el componente hijo tiene acceso a los valores del componente padre.
+
+**Ventajas**
+
+- Nos permite el acceso a las props o valores internos de un componente o un custom hook dando posibilidad de extenderlos o modificarlos
+- Nos da flexibilidad de como queremos personalizar o mostrar los componentes
+
+**Desventajas**
+
+- Para implementarlo debemos hacerlo en conjunto de otros patrones, puede ser customHook o render props, por lo cual es un patron complementario.
+
+**En que casos aplica usar este patrón?**
+
+Básicamente hay que aplicarlo cuando quieres proveer un acceso a los props de tu componente de valores internos, o tenga un componente o de un custom hook tiene una manera centralizada o cuando quieres hacer la mismo. Pero esos valores internos para ser extendidos.
+
+**Ejemplos sin patrón**
+
+En este caso tenemos un componente Hijo que tiene la lógica para implementar formularios, se hace uso del patrón renderProps, pasando la prop children en forma de función ( entregando al hijo lo que deba renderizar ).
+
+El problema yace cuando queremos extender el comportamiento del componente hijo, por ejemplo que el handleChange haga algo extra.
+
+```jsx
+import {FormWithRenderProps} from './form-with-render-props';
+
+export const PropsGettersPage = () => {
+  const onSubmit = values => alert(JSON.stringify(values));
+
+  const _handleChange = handleChange => e => {
+    alert('change');
+    handleChange(e);
+  };
+
+  return (
+    <>
+      <h2>Ejemplo sin Props Getters</h2>
+      <FormWithRenderProps initialState={{name: '', jobTitle: ''}}>
+        {({formValues, handleChange, handleSubmit}) => (
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div>
+              <p>Name</p>
+              <input
+                type="text"
+                name="name"
+                value={formValues.name}
+                onChange={_handleChange(handleChange)}
+              />
+            </div>
+            <div>
+              <p>Job Title</p>
+              <input
+                type="text"
+                name="jobTitle"
+                value={formValues.jobTitle}
+                onChange={handleChange}
+              />
+            </div>
+            <button style={{margin: '8px 0'}} type="submit">
+              Submit
+            </button>
+          </form>
+        )}
+      </FormWithRenderProps>
+
+      <hr />
+
+      <h2>Ejemplo con Props Getters</h2>
+    </>
+  );
+};
+```
+
+Componente hijo (renderiza el children), tampoco serviría el caso de modificar las funciones internas ya que se modificarían en todas las implementaciones de este componente
+
+```jsx
+export const FormWithRenderProps = ({initialState, children}) => {
+  const [formValues, setFormValues] = useState({...initialState});
+
+  const handleChange = ({target}) => {
+    const {name, value} = target;
+
+    setFormValues({...formValues, [name]: value});
+  };
+
+  const handleSubmit = _handleSubmit => event => {
+    event.preventDefault();
+
+    _handleSubmit(formValues);
+  };
+
+  const getStateAndHelpers = () => ({
+    formValues,
+    handleChange,
+    handleSubmit,
+  });
+
+  return children(getStateAndHelpers());
+};
+```
+
+**Ejemplos con patrón**
+
+**Uso de Props Getter con Render Props** 
+
+Abrimos la opción de que la implementación de FinalFormWIthRenderProps sea altamente extensible.                                    
+
+Creamos una función interna que se encargará de recibir las implementaciónes que van a extender el comportamiento, como vemos a continuación, para el prop onChange llamamos a una función que llamará la implementación propia del componente y luego la obtenida por props.
+
+```
+  const getInputProps = (props = {}) => ({
+    onChange: callAll(props.onChange, handleChange),
+  });
+```
+
+Así quedaría finalmente el componente, con una función callAll, que se encargará de ejecutar todas las implementaciones proporcionadas.
+
+```jsx
+function callAll(...fns) {
+  return function (...args) {
+    fns.forEach(fn => fn && fn(...args));
+  };
+}
+
+export const FinalFormWithRenderProps = ({initialState, children}) => {
+  const [formValues, setFormValues] = useState({...initialState});
+
+  const handleChange = ({target}) => {
+    const {name, value} = target;
+
+    setFormValues({...formValues, [name]: value});
+  };
+
+  const handleSubmit = _handleSubmit => event => {
+    event.preventDefault();
+
+    _handleSubmit(formValues);
+  };
+
+  const getInputProps = (props = {}) => ({
+    onChange: callAll(props.onChange, handleChange),
+  });
+
+  const getStateAndHelpers = () => ({
+    formValues,
+    handleSubmit,
+    getInputProps,
+  });
+
+  return children(getStateAndHelpers());
+};
+
+```
+
+Así quedaría la implementación, se hace un spread de getInputProps y se pasa la implementación que se quiere utilizar , en este caso logChange.
+
+```jsx
+import React from 'react';
+
+import {FormWithRenderProps} from './form-with-render-props';
+import {FinalFormWithRenderProps} from './final-with-render-props';
+import {FormWithHoc} from './form-with-hoc';
+import {FormWithHook} from './form-with-hook';
+
+export const PropsGettersPage = () => {
+  const onSubmit = values => alert(JSON.stringify(values));
+    
+  const logChange = () => {
+    console.log('changed!');
+  };
+
+  return (
+    <>
+      <h2>Ejemplo con Props Getters y Render Props</h2>
+      <FinalFormWithRenderProps initialState={{name: '', jobTitle: ''}}>
+        {({formValues, getInputProps, handleSubmit}) => (
+          <form onSubmit={handleSubmit(onSubmit)}>
+            <div>
+              <p>Name</p>
+              <input
+                type="text"
+                name="name"
+                value={formValues.name}
+                {...getInputProps({onChange: logChange})}
+              />
+            </div>
+            <div>
+              <p>Job Title</p>
+              <input
+                type="text"
+                name="jobTitle"
+                value={formValues.jobTitle}
+                {...getInputProps({onChange: logChange})}
+              />
+            </div>
+            <button style={{margin: '8px 0'}} type="submit">
+              Submit
+            </button>
+          </form>
+        )}
+      </FinalFormWithRenderProps>
+   </>
+  );
+};
+```
+
+**Uso de Props Getter con HOC**
+
+En este caso implementamos el form con un HOC, reutilizamos la función callAll, para poder ejecutar las funciones que extienden nuestro componente.
+
+```jsx
+function callAll(...fns) {
+  return function (...args) {
+    fns.forEach(fn => fn && fn(...args));
+  };
+}
+
+export const withControlledForm = (FormComponent, initialState = {}) =>
+  class WithFormMethodsHOC extends Component {
+    constructor(props) {
+      super(props);
+
+      this.state = {
+        formValues: {...initialState},
+      };
+    }
+
+    handleChange = e => {
+      const {name, value} = e.target;
+      const {formValues} = this.state;
+
+      formValues[name] = value;
+      this.setState({formValues});
+    };
+
+    handleSubmit = _handleSubmit => e => {
+      e.preventDefault();
+      const {formValues} = this.state;
+
+      _handleSubmit(formValues);
+    };
+
+    getInputProps = (props = {}) => ({
+      onChange: callAll(props.onChange, this.handleChange),
+    });
+
+    getStateAndHelpers = () => ({
+      formValues: this.state.formValues,
+      handleSubmit: this.handleSubmit,
+      getInputProps: this.getInputProps,
+    });
+
+    render() {
+      return (
+        <FormComponent
+          {...this.props}
+          handleSubmit={this.handleSubmit}
+          {...this.getStateAndHelpers()}
+        />
+      );
+    }
+  };
+```
+
+En el form como tal aplicamos la función que extiende, en este caso es un mensaje de log.
+
+```jsx
+import {withControlledForm} from '../hocs/with-controlled-form';
+
+const Form = ({formValues, getInputProps, handleSubmit, onSubmit}) => {
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <div>
+        <p>Name</p>
+        <input
+          type="text"
+          name="name"
+          value={formValues.name}
+          {...getInputProps({
+            onChange: () => console.log('changed'),
+          })}
+        />
+      </div>
+      <div>
+        <p>Job Title</p>
+        <input
+          type="text"
+          name="jobTitle"
+          value={formValues.jobTitle}
+          {...getInputProps({
+            onChange: () => console.log('changed 2'),
+          })}
+        />
+      </div>
+      <button style={{margin: '8px 0'}} type="submit">
+        Submit
+      </button>
+    </form>
+  );
+};
+
+export const FormWithHoc = withControlledForm(Form, {
+  name: '',
+  jobTitle: '',
+});
+```
+
+**Uso de Props Getter con custom hooks**
+
+En este caso mismo procedimiento, se refactoriza el custom hook agregandole la función callAll y la función input props.
+
+```tsx
+function callAll(...fns) {
+  return function (...args) {
+    fns.forEach(fn => fn && fn(...args));
+  };
+}
+
+export const useControlledForm = initialState => {
+  const [formValues, setFormValues] = useState({...initialState});
+
+  const handleChange = ({target}) => {
+    const {name, value} = target;
+
+    setFormValues({...formValues, [name]: value});
+  };
+
+  const handleSubmit = _handleSubmit => event => {
+    event.preventDefault();
+
+    _handleSubmit(formValues);
+  };
+
+  const getInputProps = (props = {}) => ({
+    onChange: callAll(props.onChange, handleChange),
+  });
+
+  const getStateAndHelpers = () => ({
+    formValues,
+    handleSubmit,
+    getInputProps,
+  });
+
+  return {
+    handleSubmit,
+    ...getStateAndHelpers(),
+  };
+};
+```
+
+Y la correspondiente implementación en el componente
+
+```jsx
+import {useControlledForm} from '../hooks/useControlledForm';
+
+export const FormWithHook = ({onSubmit}) => {
+  const {formValues, getInputProps, handleSubmit} = useControlledForm({
+    name: '',
+    jobTitle: '',
+  });
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <div>
+        <p>Name</p>
+        <input
+          type="text"
+          name="name"
+          value={formValues.name}
+          {...getInputProps({
+            onChange: () => console.log('updated'),
+          })}
+        />
+      </div>
+      <div>
+        <p>Job Title</p>
+        <input
+          type="text"
+          name="jobTitle"
+          value={formValues.jobTitle}
+          {...getInputProps()}
+        />
+      </div>
+      <button style={{margin: '8px 0'}} type="submit">
+        Submit
+      </button>
+    </form>
+  );
+};
+```
+
+Al ser la implementación mas limpia, más legible y con menos lineas de código es recomendable usar la implementación con custom hooks, pero esto siempre depende igualmente del caso.
+
+**Links de interes:**
+
+https://kentcdodds.com/blog/how-to-give-rendering-control-to-users-with-prop-getters (Explicación del patrón por su creador)
+
+Ejemplos de liberías que implementan el patrón
+
+https://github.com/downshift-js/downshift#prop-getters
+
+https://www.npmjs.com/package/mm-react-credit-card-primitives
+
+https://www.npmjs.com/package/react-stepper-primitive
+
