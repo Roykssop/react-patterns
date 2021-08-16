@@ -1241,3 +1241,77 @@ https://www.npmjs.com/package/mm-react-credit-card-primitives
 
 https://www.npmjs.com/package/react-stepper-primitive
 
+## Pattern: State Initializer
+
+Este patrón Consiste en poder darle la opción a un componente que su estado sea inicializado por un componente padre, permitiendonos también manipular o resetear el estado.
+
+**Ventajas**
+
+- Sencillo de implementar
+- Iniciar un componente con un estado particular
+
+**Desventajas**
+
+- Lo único es que la implementación va en el padre.
+
+**En que casos aplica usar este patrón?**
+
+Cuando queramos que un componente tenga un estado particular al inicio.
+
+**Ejemplos de aplicación**
+
+La esencia del patrón es enviar como parámetro el estado inicial, en este caso lo haremos con un custom hook
+
+Custom Hook
+
+```jsx
+export const useControlledForm = (initialState = {}) => {
+  const [formValues, setFormValues] = useState(initialState);
+
+  const handleChange = ({target}) => {
+    const {name, value} = target;
+    setFormValues({...initialState, [name]: value});
+  };
+
+  const handleSubmit = cb => e => {
+    e.preventDefault();
+    cb(formValues);
+  };
+
+  const resetForm = () => {
+    setFormValues(initialState);
+  };
+
+  return {
+    formValues,
+    handleChange,
+    handleSubmit,
+    resetForm,
+  };
+};
+```
+
+Implementación desde el componente
+
+```jsx
+export const MyForm = () => {
+  const {formValues, handleChange, handleSubmit, resetForm} = useControlledForm(
+    {
+      name: '',
+    },
+  );
+
+  const showData = values => {
+    alert(JSON.stringify(values));
+    resetForm();
+  };
+
+  return (
+    <form onSubmit={handleSubmit(showData)}>
+      <input name="name" value={formValues.name} onChange={handleChange} />
+      <button>Submit</button>
+    </form>
+  );
+}
+```
+
